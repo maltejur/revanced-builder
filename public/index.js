@@ -11,6 +11,11 @@ let isDownloading = false;
 let hasFinished = false;
 let arch;
 let versionChoosen;
+let uploadedApk = false;
+
+if (localStorage.getItem('black-theme')) {
+  document.documentElement.classList.add('black');
+}
 
 function sendCommand(args) {
   ws.send(JSON.stringify(args));
@@ -23,10 +28,14 @@ function setApp() {
 
   sendCommand({
     event: 'selectApp',
-    selectedApp: appChecked.value
+    selectedApp: {
+      packageName: appChecked.value,
+      link: appChecked.attributes.link.value,
+      appName: appChecked.attributes.appName.value
+    }
   });
 
-  location.href = '/dependencies';
+  location.href = '/patches';
 }
 
 function loadPatches() {
@@ -90,8 +99,9 @@ function setPatches() {
     selectedPatches: selectedPatchList,
     excludedPatches: excludedPatchList
   });
-
-  location.href = '/versions';
+  if (uploadedApk) {
+    location.href = '/patch';
+  } else location.href = '/versions';
 }
 
 /**
@@ -137,7 +147,7 @@ function setAppVersion(arch, version) {
     });
 
     document.getElementsByTagName('header')[0].innerHTML =
-      '<h1>Downloading APK...</h1>';
+      '<h1><i class="fa-solid fa-download"></i>Downloading APK</h1>';
     document.getElementById('content').innerHTML = '<span class="log"></span>';
     document.getElementsByTagName('main')[0].innerHTML +=
       '<progress value="0"></progress>';
@@ -152,9 +162,9 @@ function setAppVersion(arch, version) {
 /**
  * @param {boolean} isRooted
  */
-function getAppVersions(isRooted) {
+function getAppVersions(isRooted, page = 1) {
   document.getElementsByTagName('header')[0].innerHTML = `
-    <h1>Select the version you want to download</h1>
+    <h1><i class="fa-solid fa-file-arrow-down"></i>Select the version you want to download</h1>
     <span>Versions marked as beta might have bugs or can be unstable, unless marked as recommended<span>
     ${
       isRooted
@@ -171,7 +181,9 @@ function getAppVersions(isRooted) {
   backButton.innerHTML = 'Back';
   backButton.onclick = () => history.back();
 
-  sendCommand({ event: 'getAppVersion', checkVer: true });
+  if (page < 1) page = 1;
+
+  sendCommand({ event: 'getAppVersion', checkVer: true, page });
 }
 
 function buildReVanced() {
@@ -180,14 +192,6 @@ function buildReVanced() {
 
 function getAlreadyExists() {
   sendCommand({ event: 'checkFileAlreadyExists' });
-}
-
-function openAbout() {
-  window.open('/about', '_blank');
-}
-
-function openGitHub() {
-  window.open('https://github.com/reisxd/revanced-builder', '_blank');
 }
 
 /**
@@ -241,6 +245,46 @@ function installReVanced() {
   sendCommand({ event: 'installReVanced' });
 }
 
+function addSearch(isPatches) {
+  document.getElementById('search').addEventListener('keyup', () => {
+    const searchText = document.getElementById('search').value.toLowerCase();
+
+    Array.from(document.getElementsByTagName('li')).forEach(
+      (x) => (x.style.display = 'none')
+    );
+
+    if (isPatches) {
+      Array.from(document.getElementsByClassName('patchName'))
+        .filter((x) => x.innerText.toLowerCase().includes(searchText))
+        .forEach(
+          (x) => (x.parentNode.parentNode.parentNode.style.display = 'flex')
+        );
+    } else {
+      Array.from(document.getElementsByClassName('appName'))
+        .filter((x) => x.innerText.toLowerCase().includes(searchText))
+        .forEach((x) => (x.parentNode.style.display = 'flex'));
+    }
+  });
+}
+
+function setSources() {
+  const patchesOrg = document.getElementById('patch-org').value;
+  const patchesSrc = document.getElementById('patch-src').value;
+  const patches = `${patchesOrg}/${patchesSrc}`;
+
+  const integrationsOrg = document.getElementById('integrations-org').value;
+  const integrationsSrc = document.getElementById('integrations-src').value;
+  const integrations = `${integrationsOrg}/${integrationsSrc}`;
+
+  sendCommand({
+    event: 'setSettings',
+    settings: {
+      patches,
+      integrations
+    }
+  });
+}
+
 ws.onmessage = (msg) => {
   /** @type {Record<string, any>} */
   const message = JSON.parse(msg.data);
@@ -248,6 +292,7 @@ ws.onmessage = (msg) => {
   switch (message.event) {
     case 'patchList':
       {
+        uploadedApk = message.uploadedApk;
         const len = message.patchList.length;
 
         const patchListElement = document.getElementById('patchList');
@@ -260,9 +305,11 @@ ws.onmessage = (msg) => {
             patch.name
           }" data-excluded="${patch.excluded ? '1' : '0'}" type="checkbox">
   <label for="select-patch-${i}">
-    <span style="float:right;"><strong>${
-      patch.isRooted ? 'Needed for Non-Root Building' : ''
-    }</strong></span>
+  ${
+    patch.isRooted
+      ? '<span class="no-root"><strong>Needed for Non-Root Building</strong></span>'
+      : ''
+  }
     <span><strong class="patchName">${toTitleCase(
       patch.name
     )}</strong>&nbsp;&nbsp;(${
@@ -272,27 +319,16 @@ ws.onmessage = (msg) => {
   </label>
 </li>`;
         }
-        document.getElementById('search').addEventListener('keyup', () => {
-          const searchBox = document.getElementById('search');
-          const searchText = searchBox.value.toLowerCase();
 
-          for (const e of document.getElementsByTagName('li'))
-            e.style.display = 'none';
+        addSearch(true);
 
-          for (const e of document.getElementsByClassName('patchName')) {
-            if (e.innerText.toLowerCase().startsWith(searchText)) {
-              e.parentNode.parentNode.parentNode.style.display = 'flex';
-            }
-          }
-        });
-
-        for (const patch of document.getElementsByClassName('select'))
-          if (
+        Array.from(document.getElementsByClassName('select'))
+          .filter((patch) =>
             message.rememberedPatchList.includes(
               patch.getAttribute('data-patch-name')
             )
           )
-            patch.checked = true;
+          .forEach((patch) => (patch.checked = true));
       }
       break;
     case 'downloadingFile':
@@ -325,6 +361,9 @@ ws.onmessage = (msg) => {
       hasFinished = true;
 
       document.getElementById('continue').classList.remove('disabled');
+      if (localStorage.getItem('auto-next')) {
+        document.getElementById('continue').click();
+      }
       document.getElementsByClassName('log')[0].innerHTML +=
         '<span class="log-line"><strong>[builder]</strong> Finished downloading files.</span><br/>';
       break;
@@ -333,17 +372,32 @@ ws.onmessage = (msg) => {
         const len = message.versionList.length;
 
         const versionsElement = document.getElementById('versions');
+        versionsElement.innerHTML = '';
+
+        versionsElement.innerHTML += `
+          <li>
+          ${
+            message.page != 1
+              ? `<button id="prevPage" onclick="getAppVersions(${
+                  message.isRooted
+                }, ${message.page - 1})">Previous Page</button>`
+              : ''
+          }
+          <button id="nextPage" onclick="getAppVersions(${message.isRooted}, ${
+          message.page + 1
+        })">Next Page</button>
+        </li>`;
 
         for (let i = 0; i < len; i++) {
           const version = message.versionList[i];
           const noRec = version.recommended == 'NOREC';
-
+          const recommended = version.recommended ? 1 : 0;
           versionsElement.innerHTML += `
             <li>
             <input type="radio" name="version" id="app-${i}" value="${
             version.version
           }" data-beta="${version.beta ? '1' : '0'}" ${
-            !noRec ? ('data-recommended=' + version.recommended ? 1 : 0) : ''
+            !noRec ? 'data-recommended="' + recommended + '"' : ''
           }/>
             <label for="app-${i}">${version.version} ${
             version.beta ? ' (beta)' : ''
@@ -352,14 +406,17 @@ ws.onmessage = (msg) => {
           }</label></li>`;
         }
 
-        if (message.selectedApp === 'youtube.music' && !message.foundDevice)
+        if (
+          message.selectedApp === 'com.google.android.apps.youtube.music' &&
+          !message.foundDevice
+        )
           document.getElementById('continue').onclick = () => {
             const version = document.querySelector(
               'input[name="version"]:checked'
             ).value;
 
             document.getElementsByTagName('header')[0].innerHTML = `
-          <h1>Please select the architecture</h1>
+          <h1><i class="fa-solid fa-rectangle-list"></i>Please select the architecture</h1>
           <span>YouTube Music APKs only have specific architecture APKs.
           <br>If you don't know which one to choose, either look at your devices architecture using CPU-Z or select Arm64.</span>`;
             document.getElementById('versions').innerHTML = `
@@ -382,6 +439,38 @@ ws.onmessage = (msg) => {
           };
       }
       break;
+    case 'installingStockApp':
+      {
+        if (message.status === 'DOWNLOAD_STARTED') {
+          document.getElementsByTagName('header')[0].innerHTML =
+            '<h1><i class="fa-solid fa-download"></i>Downloading APK</h1>';
+          document.getElementById('content').innerHTML =
+            '<span class="log"></span>';
+          document.getElementsByTagName('main')[0].innerHTML +=
+            '<progress value="0"></progress>';
+          isDownloading = true;
+          document.getElementById('continue').classList.add('disabled');
+        } else if (message.status === 'DOWNLOAD_COMPLETE') {
+          document.getElementById('continue').classList.add('disabled');
+          isDownloading = false;
+          document.getElementsByClassName(
+            'log'
+          )[0].innerHTML += `<span class="log-line info"><strong>[builder]</strong> Uninstalling the stock app...</span><br>`;
+        } else if (message.status === 'UNINSTALL_COMPLETE') {
+          document.getElementsByClassName(
+            'log'
+          )[0].innerHTML += `<span class="log-line info"><strong>[builder]</strong> Installing the downloaded (stock) APK...</span><br>`;
+        } else if (message.status === 'ALL_DONE') {
+          document.getElementsByClassName(
+            'log'
+          )[0].innerHTML += `<span class="log-line info"><strong>[builder]</strong> Complete.</span><br>`;
+          document.getElementById('continue').classList.remove('disabled');
+          document.getElementById('continue').onclick = () => {
+            location.href = '/patch';
+          };
+        }
+      }
+      break;
     case 'patchLog':
       {
         const logLevel = message.log.includes('WARNING')
@@ -402,7 +491,7 @@ ws.onmessage = (msg) => {
       {
         // TODO: on a root install, if the file already exists and the user selects yes it skips checking if a device is plugged in
         document.getElementsByTagName('header')[0].innerHTML = `
-            <h1>Use already downloaded APK?</h1>
+            <h1><i class="fa-solid fa-file-arrow-down"></i>Use already downloaded APK?</h1>
             <span>The APK already exists in the revanced folder.${
               message.isRooted ? ' ' : '<br>'
             }Do you want to use it?${
@@ -429,7 +518,7 @@ ws.onmessage = (msg) => {
       {
         if (message.install) location.href = '/installer';
         document.getElementsByTagName('header')[0].innerHTML =
-          '<h1>Finished.</h1>';
+          '<h1><i class="fa-solid fa-square-check"></i>Finished</h1>';
 
         const firstFooterElement = document.getElementsByTagName('footer')[0];
 
@@ -445,10 +534,24 @@ ws.onmessage = (msg) => {
       location.href = `/failure?error=${message.error}`;
       break;
     case 'notUpToDate':
-      document.getElementById('container').innerHTML += `
-      <dialog>
-      <span>Your current version of Builder is not up to date.<br>Do you want to update to ${message.builderVersion}?</span>
-      <div class="buttonContainer"><button class="highlighted" onclick="window.open('https://github.com/reisxd/revanced-builder/releases/latest', '_blank'); document.getElementById('container').removeChild(document.getElementsByTagName('dialog')[0]);">Yes</button> <button onclick="document.getElementById('container').removeChild(document.getElementsByTagName('dialog')[0]);">No</button></div></dialog>`;
+      document.getElementById(
+        'builderVersion'
+      ).innerHTML = `${message.builderVersion}`;
+      document.getElementById(
+        'currentVersion'
+      ).innerHTML = `${message.currentVersion}`;
+      document.querySelector('.updater .latest').style.display = 'none';
+      document.querySelector('.updater .outdated').style.display = 'block';
+      document.querySelector('.updater').style.display = 'block';
+      break;
+    case 'upToDate':
+      document.getElementById(
+        'builderVersion'
+      ).innerHTML = `${message.currentVersion}`;
+      document.getElementById(
+        'currentVersion'
+      ).innerHTML = `${message.currentVersion}`;
+      document.querySelector('.updater').style.display = 'block';
       break;
     case 'multipleDevices':
       location.href = '/devices';
@@ -469,14 +572,76 @@ ws.onmessage = (msg) => {
       }
       break;
     }
-    case 'askRootVersion': {
-      const confirmVer = confirm(
-        `**Non Recommended Version**\nYour device has an non recommended version, do you want to patch it?`
-      );
+    case 'askRootVersion':
+      {
+        const confirmVer = confirm(
+          `**Non Recommended Version**\nYour device has a non recommended version. This means you have to let the builder replace the stock YouTube with a recommended version.\nContinue?`
+        );
 
-      if (confirmVer)
-        return sendCommand({ event: 'getAppVersion', useVer: true });
-      else return sendCommand({ event: 'getAppVersion' });
+        if (confirmVer)
+          return sendCommand({
+            event: 'getAppVersion',
+            installLatestRecommended: true
+          });
+        else {
+          if (confirm('Alright, proceed with the non-recommended version?'))
+            return sendCommand({
+              event: 'getAppVersion',
+              useVer: true
+            });
+        }
+      }
+      break;
+    case 'appList': {
+      let id = 0;
+      for (const app of message.list) {
+        const appName = app.appName.replace(' (Wear OS)', '');
+        const link = app.link.replace('-wear-os', '');
+        document.getElementById('appList').innerHTML += `
+              <li>
+                <input
+                  type="radio"
+                  name="app"
+                  id="app-${id}"
+                  value="${app.appPackage}"
+                  link="${link}"
+                  appName="${appName}"
+                /><label class="appName" for="app-${id}">${appName} (${app.appPackage})</label>
+              </li>`;
+
+        id++;
+      }
+
+      addSearch(false);
+      break;
+    }
+
+    case 'apkUploaded': {
+      document.querySelector(
+        '.inf'
+      ).innerHTML = `<div><img src="${message.icon}"/><h2>${message.appName}</h2></div><p>${message.package}<br>v${message.versionName}</p>`;
+      document.querySelector('.shw').style.display = 'block';
+      document
+        .getElementById('continue')
+        .setAttribute('onClick', "location.href = '/patches'");
+      break;
+    }
+
+    case 'settings': {
+      const patches = message.settings.patches.split('/');
+      const integrations = message.settings.integrations.split('/');
+
+      const patchesOrg = document.getElementById('patch-org');
+      const patchesSrc = document.getElementById('patch-src');
+
+      patchesOrg.value = patches[0];
+      patchesSrc.value = patches[1];
+
+      const integrationsOrg = document.getElementById('integrations-org');
+      const integrationsSrc = document.getElementById('integrations-src');
+
+      integrationsOrg.value = integrations[0];
+      integrationsSrc.value = integrations[1];
     }
   }
 };

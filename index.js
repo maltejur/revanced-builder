@@ -2,13 +2,15 @@ const { createServer } = require('node:http');
 const { join } = require('node:path');
 
 const exec = require('./utils/promisifiedExec.js');
+const uploadAPKFile = require('./utils/uploadAPKFile.js');
 
 const Express = require('express');
+const fileUpload = require('express-fileupload');
 const { WebSocketServer } = require('ws');
 const open_ = require('open');
 const pf = require('portfinder');
 
-const fkill = require('fkill');
+const killProcess = require('kill-process-by-name');
 
 const {
   updateFiles,
@@ -22,7 +24,10 @@ const {
   checkForUpdates,
   getDevices,
   setDevice,
-  installReVanced
+  installReVanced,
+  getApp,
+  getSettings,
+  setSettings
 } = require('./wsEvents/index.js');
 
 const app = Express();
@@ -30,11 +35,18 @@ const server = createServer(app);
 const wsServer = new WebSocketServer({ server });
 const wsClients = [];
 
+app.use(fileUpload());
 app.use(Express.static(join(__dirname, 'public')));
 app.get('/revanced.apk', (_, res) => {
   const file = join(process.cwd(), 'revanced', global.outputName);
 
   res.download(file);
+});
+
+app.post('/uploadApk', (req, res) => {
+  req.socket.setTimeout(60000 * 60);
+  req.setTimeout(60000 * 60);
+  uploadAPKFile(req, res, wsClients);
 });
 
 /**
@@ -88,10 +100,7 @@ const cleanExit = async (svr) => {
   log('Killing any dangling processes...', false);
 
   try {
-    await fkill(['adb', 'java', 'aapt2'], {
-      forceAfterTimeout: 5000,
-      silent: true
-    });
+    ['adb', 'java', 'aapt2'].forEach((p) => killProcess(p));
     log('Done.', true, false);
   } catch (error) {
     log('Failed.', true, false);
@@ -144,6 +153,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 process.on('SIGTERM', () => cleanExit(server));
+process.on('SIGINT', () => cleanExit(server));
 
 // The websocket server
 wsServer.on('connection', (ws) => {
@@ -157,6 +167,9 @@ wsServer.on('connection', (ws) => {
     switch (message.event) {
       case 'checkForUpdates':
         await checkForUpdates(ws);
+        break;
+      case 'getAppList':
+        await getApp(ws);
         break;
       case 'updateFiles':
         await updateFiles(ws);
@@ -190,6 +203,12 @@ wsServer.on('connection', (ws) => {
         break;
       case 'installReVanced':
         await installReVanced(ws);
+        break;
+      case 'getSettings':
+        await getSettings(ws);
+        break;
+      case 'setSettings':
+        await setSettings(message);
         break;
       case 'exit':
         process.kill(process.pid, 'SIGTERM');

@@ -1,6 +1,6 @@
 const { getDownloadLink } = require('../utils/FileDownloader.js');
 
-const currentVersion = 'v3.4.15';
+const currentVersion = 'v3.9.3';
 
 /**
  * @param {import('ws').WebSocket} ws
@@ -14,9 +14,18 @@ module.exports = async function checkForUpdates(ws) {
     ws.send(
       JSON.stringify({
         event: 'notUpToDate',
-        builderVersion
+        builderVersion,
+        currentVersion
       })
     );
+  else {
+    ws.send(
+      JSON.stringify({
+        event: 'upToDate',
+        currentVersion
+      })
+    );
+  }
 };
 
 module.exports.currentVersion = currentVersion;

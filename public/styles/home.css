@@ -1,17 +1,27 @@
-p {
-  color: white;
-}
-
-#content--wrapper {
-  background-color: transparent !important;
-}
-
-#content {
-  text-align: center;
-  display: flex;
+body {
   align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+}
+
+main {
+  padding: 20px;
+  text-align: center;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
+}
+
+#go {
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+}
+
+#go i {
+  margin-left: 8px;
 }
 
 .social-icon {
@@ -21,6 +31,10 @@ p {
 .actions {
   display: flex;
   padding: 12px;
+}
+
+.actions a {
+  margin-right: 10px;
 }
 
 .theming.show {
@@ -37,9 +51,43 @@ p {
   justify-content: center;
   align-items: center;
 }
+svg {
+  min-height: 160px;
+  max-height: 250px;
+  margin-bottom: 17px;
+}
 
-.accent-fun {
-  color: var(--accentColor);
+h1 span {
   font-weight: bold;
+}
+
+h1 .accent-fun {
+  color: var(--accentColor);
   filter: brightness(160%);
+}
+
+.status {
+  margin-top: 10px;
+  color: #ddd;
+  font-family: fira code, source sans hw regular, monospace;
+  padding: 8px;
+  border-radius: 21px;
+  box-shadow: 0 0 0 2px var(--interactableColor);
+}
+
+.updater {
+  margin-top: 10px;
+  display: none;
+}
+
+.updater .latest {
+  color: #56d956;
+}
+
+.updater .outdated {
+  display: none;
+}
+
+.updater .outdated span {
+  color: #ff3737;
 }

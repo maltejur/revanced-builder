@@ -1,3 +1,9 @@
+html.black
+  input[type='checkbox'].select
+  + label:not(input[type='checkbox'].select:checked + label) {
+  background-color: black !important;
+}
+
 input[type='checkbox'] {
   display: none;
 }
@@ -44,14 +50,16 @@ li {
   margin-bottom: 15px;
 }
 
-.searchBox {
-  width: 100%;
-  color: var(--textColor);
-  border-radius: var(--border-radius);
-  padding: 12px;
-  background-color: var(--interactableColor);
-  border: 2px solid #dddddd2e;
-  font-size: 14px;
-  margin-top: 5px;
-  user-select: auto;
+.no-root {
+  float: right;
+}
+
+@media only screen and (max-width: 700px) {
+  li .no-root {
+    display: block;
+    float: none;
+    border-bottom: 2px solid;
+    padding-bottom: 4.5px;
+    margin-bottom: 4.5px;
+  }
 }

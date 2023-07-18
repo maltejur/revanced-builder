@@ -9,15 +9,23 @@
   --textColor: #ffffff;
   --accentColor: #4873b3;
   --primaryColor: #0f111a;
-  --secondaryColor: #00010a;
   --contrastColor: #1b1e29;
   --interactableColor: #2a2d3a;
   --buttonColor: #3d404f;
   --scrollbarColor: #3d404f;
   --icon-foreground: #686b76;
   --icon-background: #1b1e29;
-  /* --contrastColor */
   --border-radius: 10px;
+}
+
+html.black:root {
+  --primaryColor: black;
+}
+
+html.black
+  input[type='radio']
+  + label:not(input[type='radio']:checked + label) {
+  background-color: black;
 }
 
 /*
@@ -41,6 +49,11 @@ span {
   font-weight: 400;
 }
 
+p {
+  color: var(--textColor);
+  font-family: 'Roboto', sans-serif;
+}
+
 /* Fonts and styles for headers */
 
 h1,
@@ -55,6 +68,11 @@ h6 {
   margin: 0;
 }
 
+h1 i {
+  vertical-align: revert;
+  margin-right: 8px;
+}
+
 /* Make BODY and HTML elements inherit :root properies */
 
 body,
@@ -62,6 +80,12 @@ html {
   width: 100%;
   height: 100%;
   margin: 0;
+}
+
+body {
+  background-color: var(--primaryColor);
+  margin: auto;
+  max-width: 1300px;
 }
 
 /* Styles for container */
@@ -84,8 +108,10 @@ div#container > main {
 
 /* Main content */
 
-div#content {
-  height: 100%;
+@media (min-width: 500px) {
+  div#content--wrapper {
+    padding: 13px !important;
+  }
 }
 
 /* Wrapper for the content */
@@ -95,7 +121,8 @@ div#content--wrapper {
   height: 100%;
   padding: 8px;
   margin-top: 5px;
-  background-color: var(--contrastColor);
+  background-color: var(--primaryColor);
+  box-shadow: 0 0 0 2px var(--interactableColor);
   overflow-x: auto;
   scroll-behavior: smooth;
 }
@@ -159,7 +186,14 @@ footer {
   display: flex;
   align-items: center;
   padding: 12px;
-  background-color: var(--secondaryColor);
+  background-color: var(--primaryColor);
+  overflow-y: hidden;
+  overflow-x: auto;
+  box-shadow: 0 -2px 0 0 var(--interactableColor);
+}
+
+footer a {
+  margin-right: 10px;
 }
 
 /* Header for title and optional buttons ( addressed per module ) */
@@ -190,7 +224,7 @@ i.social-icon {
   border-radius: 25px;
   line-height: 1em;
   color: var(--icon-foreground);
-  background-color: var(--icon-background);
+  box-shadow: 0 0 0 2px var(--interactableColor);
   cursor: pointer;
   transition: 200ms;
 }
@@ -207,90 +241,28 @@ i.social-icon::before {
   top: 8px;
   border-radius: 25px;
   color: var(--icon-foreground);
-  background-color: var(--icon-background);
 }
 
 .disabled {
   filter: brightness(50%) !important;
 }
 
-/* Dialog */
-
-dialog {
-  display: block;
-  border-radius: 10px;
-  background-color: var(--primaryColor);
-  border-color: var(--contrastColor);
-  color: var(--textColor);
-}
-
-.buttonContainer {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Color Picker */
-/* fadeInUp animation credits: animate.css */
-@keyframes fadeInUp {
-  0% {
-    opacity: 0;
-    -webkit-transform: translate3d(0, 100%, 0);
-    transform: translate3d(0, 100%, 0);
-  }
-
-  to {
-    opacity: 1;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-  }
-}
-
-.theming {
-  border: 2px solid #ddd;
-  border-bottom-color: rgb(221, 221, 221);
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  padding: 25px;
-  position: fixed;
-  background: black;
-  animation: fadeInUp 0.25s;
-  bottom: 81px;
-  left: 22px;
-  border-bottom: 0px;
-  padding-bottom: 15px;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  display: none;
-}
-
-.theming.show {
-  display: block;
-}
-
-#themecolor-picker {
-  display: flex;
-  padding: 0;
-}
-
-#themecolor-picker span {
-  padding: 14px;
-  transition: 200ms;
-  margin-right: 8px;
-  display: inline-block;
-  border-radius: 5px;
-  cursor: pointer;
-  height: 22px;
-  width: 22px;
-}
-
-#themecolor-picker span.active {
-  box-shadow: inset 0 0 0 2px #ddd;
-}
-
-#themecolor-picker span[style*='#4873b3'] {
-  margin-left: 8px;
-}
-
 .log * {
   user-select: text;
+}
+
+html.black .searchBox {
+  background-color: black !important;
+}
+
+.searchBox {
+  width: 100%;
+  color: var(--textColor);
+  border-radius: var(--border-radius);
+  padding: 12px;
+  background-color: var(--interactableColor);
+  border: 2px solid #dddddd2e;
+  font-size: 14px;
+  margin-top: 5px;
+  user-select: auto;
 }

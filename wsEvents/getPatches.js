@@ -1,6 +1,6 @@
 const exec = require('../utils/promisifiedExec.js');
 
-const { getPatchList } = require('../utils/PatchListRememberer.js');
+const { getPatchList } = require('../utils/Settings.js');
 const parsePatch = require('../utils/PatchesParser.js');
 
 /**
@@ -20,13 +20,19 @@ module.exports = async function getPatches(ws) {
         hasRoot = false;
     });
 
-  const rememberedPatchList = getPatchList(global.jarNames.selectedApp);
+  const rememberedPatchList = getPatchList(
+    global.jarNames.selectedApp.packageName
+  );
 
   ws.send(
     JSON.stringify({
       event: 'patchList',
-      patchList: await parsePatch(global.jarNames.selectedApp, hasRoot),
-      rememberedPatchList
+      patchList: await parsePatch(
+        global.jarNames.selectedApp.packageName,
+        hasRoot
+      ),
+      rememberedPatchList,
+      uploadedApk: global.jarNames.selectedApp.uploaded
     })
   );
 };
